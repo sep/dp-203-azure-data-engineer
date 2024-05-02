@@ -2,10 +2,12 @@ Clear-Host
 write-host "Starting script at $(Get-Date)"
 
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-Install-Module -Name Az.Synapse -Force
+#Install-Module -Name Az.Synapse -Force
+
+. ..\base-alt-script.ps1 $args[0] $args[1] $args[2]
 
 # Handle cases where the user has multiple subscriptions
-$subs = Get-AzSubscription | Select-Object
+<#$subs = Get-AzSubscription | Select-Object
 if($subs.GetType().IsArray -and $subs.length -gt 1){
     Write-Host "You have multiple Azure subscriptions - please select the one you want to use:"
     for($i = 0; $i -lt $subs.length; $i++)
@@ -154,17 +156,18 @@ $userName = ((az ad signed-in-user show) | ConvertFrom-JSON).UserPrincipalName
 $id = (Get-AzADServicePrincipal -DisplayName $synapseWorkspace).id
 New-AzRoleAssignment -Objectid $id -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
 New-AzRoleAssignment -SignInName $userName -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
-
+#>
 # Upload files
 write-host "Loading data..."
+
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $dataLakeAccountName
 $storageContext = $storageAccount.Context
 Get-ChildItem "./data/*.csv" -File | Foreach-Object {
     write-host ""
     $file = $_.Name
     Write-Host $file
-    $blobPath = "sales/csv/$file"
-    Set-AzStorageBlobContent -File $_.FullName -Container "files" -Blob $blobPath -Context $storageContext
+    $blobPath = "/files/$inits/sales/csv/$file"
+    Set-AzStorageBlobContent -File $_.FullName -Container "$files" -Blob $blobPath -Context $storageContext
 }
 
 Get-ChildItem "./data/*.parquet" -File | Foreach-Object {
@@ -172,16 +175,16 @@ Get-ChildItem "./data/*.parquet" -File | Foreach-Object {
     Write-Host $_.Name
     $folder = $_.Name.Replace(".snappy.parquet", "")
     $file = $_.Name.Replace($folder, "orders")
-    $blobPath = "sales/parquet/year=$folder/$file"
-    Set-AzStorageBlobContent -File $_.FullName -Container "files" -Blob $blobPath -Context $storageContext
+    $blobPath = "/files/$inits/sales/parquet/year=$folder/$file"
+    Set-AzStorageBlobContent -File $_.FullName -Container "$files" -Blob $blobPath -Context $storageContext
 }
 
 Get-ChildItem "./data/*.json" -File | Foreach-Object {
     write-host ""
     $file = $_.Name
     Write-Host $file
-    $blobPath = "sales/json/$file"
-    Set-AzStorageBlobContent -File $_.FullName -Container "files" -Blob $blobPath -Context $storageContext
+    $blobPath = "/files/$inits/sales/json/$file"
+    Set-AzStorageBlobContent -File $_.FullName -Container "$files" -Blob $blobPath -Context $storageContext
 }
 
 write-host "Script completed at $(Get-Date)"

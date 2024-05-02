@@ -42,7 +42,7 @@ if($subs.GetType().IsArray -and $subs.length -gt 1){
     }
     $selectedSub = $subs[$selectedIndex].Id
     #>
-    #Select-AzSubscription -SubscriptionId $selectedSub
+    Select-AzSubscription -SubscriptionId $selectedSub
     #az account set --subscription $selectedSub
 #}
 
@@ -148,8 +148,8 @@ $synapseWorkspace = $env:synapseWorkspace
 $dataLakeAccountName = $env:dataLakeAccountName
 $sparkPool = $env:sparkPool
 $sqlDatabaseName = $env:sqlDatabaseName
-
-
+$files = $env:files
+$resourceGroupName = $env:resourceGroupName
 <#
 write-host "Creating $synapseWorkspace Synapse Analytics workspace in $resourceGroupName resource group..."
 write-host "(This may take some time!)"
@@ -191,7 +191,9 @@ $token = (Get-AzAccessToken -ResourceUrl https://database.windows.net).Token
  
 "Pool = " + "$sparkPool.database.windows.net"
 
-$sqlname = "$env:synapseWorkspace.sql.azuresynapse.net"
+#$sqlname = "$env:synapseWorkspace.sql.azuresynapse.net"
+
+$conn = "Server=$synapseWorkspace.sql.azuresynapse.net; Database=$sqlDatabaseName;"
 
 Invoke-Sqlcmd -ConnectionString $conn -InputFile "setup.sql" -AccessToken "$token" -Variable $params
 
@@ -203,7 +205,7 @@ Get-ChildItem "./data/*.txt" -File | Foreach-Object {
     Write-Host "$file"
     $table = $_.Name.Replace(".txt","")
     Write-Host "Writing to $inits.$table to $synapseWorkspace.sql.azuresynapse.net"
-    bcp "$sqlDatabaseName.$inits.$table" in $file -S "$synapseWorkspace.sql.azuresynapse.net" -U $sqlUser -P $sqlPassword -f $file.Replace("txt", "fmt") -k -E -b 5000
+    bcp "$sqlDatabaseName.$inits.$table" in $file -S "$synapseWorkspace.sql.azuresynapse.net" -q -U $sqlUser -P $sqlPassword -f $file.Replace("txt", "fmt") -k -E -b 5000
 }
 <#
 # Pause SQL Pool

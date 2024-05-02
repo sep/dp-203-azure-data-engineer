@@ -2,7 +2,10 @@ Clear-Host
 write-host "Starting script at $(Get-Date)"
 
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-Install-Module -Name Az.Synapse -Force
+
+. ..\base-alt-script.ps1 $args[0] $args[1] $args[2]
+
+<#
 
 # Handle cases where the user has multiple subscriptions
 $subs = Get-AzSubscription | Select-Object
@@ -154,6 +157,7 @@ $userName = ((az ad signed-in-user show) | ConvertFrom-JSON).UserPrincipalName
 $id = (Get-AzADServicePrincipal -DisplayName $synapseWorkspace).id
 New-AzRoleAssignment -Objectid $id -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
 New-AzRoleAssignment -SignInName $userName -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
+#>
 
 # Upload files
 write-host "Loading data..."
@@ -163,8 +167,8 @@ Get-ChildItem "./data/*.csv" -File | Foreach-Object {
     write-host ""
     $file = $_.Name
     Write-Host $file
-    $blobPath = "sales/csv/$file"
-    Set-AzStorageBlobContent -File $_.FullName -Container "files" -Blob $blobPath -Context $storageContext
+    $blobPath = "files/$inits/03/sales/csv/$file"
+    Set-AzStorageBlobContent -File $_.FullName -Container "$files" -Blob $blobPath -Context $storageContext
 }
 
 write-host "Script completed at $(Get-Date)"

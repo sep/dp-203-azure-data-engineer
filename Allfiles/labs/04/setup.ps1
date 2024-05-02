@@ -2,8 +2,14 @@ Clear-Host
 write-host "Starting script at $(Get-Date)"
 
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-Install-Module -Name Az.Synapse -Force
+#Install-Module -Name Az.Synapse -Force
 
+. ..\base-alt-script.ps1 $args[0] $args[1] $args[2]
+
+$ctx = New-AzStorageContext -StorageAccountName "$dataLakeAccountName" -UseConnectedAccount
+$dir = New-AzDataLakeGen2Item -Context $ctx -FileSystem "$files" -Path "files/$inits/04/RetailDB" -Directory
+
+<#
 # Handle cases where the user has multiple subscriptions
 $subs = Get-AzSubscription | Select-Object
 if($subs.GetType().IsArray -and $subs.length -gt 1){
@@ -160,3 +166,4 @@ New-AzRoleAssignment -SignInName $userName -RoleDefinitionName "Storage Blob Dat
 
 
 write-host "Script completed at $(Get-Date)"
+#>

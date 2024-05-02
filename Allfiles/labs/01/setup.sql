@@ -1,9 +1,59 @@
-﻿SET ANSI_NULLS ON;
+SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
 GO
 CREATE USER [$(user)] FROM EXTERNAL PROVIDER;
 GO
+
+-- Drop tables if they exist
+IF OBJECT_ID('[$(inits)].FactInternetSales', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].FactInternetSales;
+GO
+
+IF OBJECT_ID('[$(inits)].DimCustomer', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimCustomer;
+GO
+
+IF OBJECT_ID('[$(inits)].DimDate', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimDate;
+GO
+
+IF OBJECT_ID('[$(inits)].DimGeography', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimGeography;
+GO
+
+IF OBJECT_ID('[$(inits)].DimProduct', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimProduct;
+GO
+
+IF OBJECT_ID('[$(inits)].DimProductCategory', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimProductCategory;
+GO
+
+IF OBJECT_ID('[$(inits)].DimProductSubcategory', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimProductSubcategory;
+GO
+
+IF OBJECT_ID('[$(inits)].DimSalesTerritory', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimSalesTerritory;
+GO
+
+IF OBJECT_ID('[$(inits)].DimPromotion', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimPromotion;
+GO
+
+IF OBJECT_ID('[$(inits)].DimCurrency', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimCurrency;
+GO
+
+IF OBJECT_ID('[$(inits)]', 'U') IS NOT NULL
+    DROP TABLE [$(inits)].DimCurrency;
+GO
+
+IF EXISTS (SELECT * FROM sys.schemas WHERE name = N'$(inits)')
+    DROP SCHEMA [$(inits)];
+GO
+
 CREATE SCHEMA $(inits) AUTHORIZATION [$(user)]
 GO
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::$(inits) TO [$(user)]; 
