@@ -1,8 +1,14 @@
-﻿SET ANSI_NULLS ON
+﻿SET ANSI_NULLS ON;
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TABLE [dbo].[FactInternetSales](
+CREATE USER [$(user)] FROM EXTERNAL PROVIDER;
+GO
+CREATE SCHEMA $(inits) AUTHORIZATION [$(user)]
+GO
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::$(inits) TO [$(user)]; 
+GO
+CREATE TABLE [$(inits)].[FactInternetSales](
 	[SalesOrderNumber] [nvarchar](20) NOT NULL,
 	[SalesOrderLineNumber] [tinyint] NOT NULL,
 	[CustomerKey] [int] NOT NULL,
@@ -29,7 +35,7 @@ CREATE TABLE [dbo].[FactInternetSales](
 )
 
 GO
-CREATE TABLE [dbo].[DimCustomer](
+CREATE TABLE [$(inits)].[DimCustomer](
 	[CustomerKey] [int] IDENTITY(1,1) NOT NULL,
 	[GeographyKey] [int] NULL,
 	[CustomerAlternateKey] [nvarchar](15) NOT NULL,
@@ -62,7 +68,7 @@ CREATE TABLE [dbo].[DimCustomer](
 )
 
 GO
-CREATE TABLE [dbo].[DimDate](
+CREATE TABLE [$(inits)].[DimDate](
 	[DateKey] [int] NOT NULL,
 	[FullDateAlternateKey] [date] NOT NULL,
 	[DayNumberOfWeek] [tinyint] NOT NULL,
@@ -85,7 +91,7 @@ CREATE TABLE [dbo].[DimDate](
 )
 
 GO
-CREATE TABLE [dbo].[DimGeography](
+CREATE TABLE [$(inits)].[DimGeography](
 	[GeographyKey] [int] IDENTITY(1,1) NOT NULL,
 	[City] [nvarchar](30) NULL,
 	[StateProvinceCode] [nvarchar](3) NULL,
@@ -99,7 +105,7 @@ CREATE TABLE [dbo].[DimGeography](
 	[IpAddressLocator] [nvarchar](15) NULL)
 
 GO
-CREATE TABLE [dbo].[DimProduct](
+CREATE TABLE [$(inits)].[DimProduct](
 	[ProductKey] [int] IDENTITY(1,1) NOT NULL,
 	[ProductAlternateKey] [nvarchar](25) NULL,
 	[ProductSubcategoryKey] [int] NULL,
@@ -142,7 +148,7 @@ WITH
   ); 
 GO
 
-CREATE TABLE [dbo].[DimProductCategory](
+CREATE TABLE [$(inits)].[DimProductCategory](
 	[ProductCategoryKey] [int] IDENTITY(1,1) NOT NULL,
 	[ProductCategoryAlternateKey] [int] NULL,
 	[EnglishProductCategoryName] [nvarchar](50) NOT NULL,
@@ -150,7 +156,7 @@ CREATE TABLE [dbo].[DimProductCategory](
 	[FrenchProductCategoryName] [nvarchar](50) NOT NULL)
 
 GO
-CREATE TABLE [dbo].[DimProductSubcategory](
+CREATE TABLE [$(inits)].[DimProductSubcategory](
 	[ProductSubcategoryKey] [int] IDENTITY(1,1) NOT NULL,
 	[ProductSubcategoryAlternateKey] [int] NULL,
 	[EnglishProductSubcategoryName] [nvarchar](50) NOT NULL,
@@ -159,7 +165,7 @@ CREATE TABLE [dbo].[DimProductSubcategory](
 	[ProductCategoryKey] [int] NULL)
 GO
 
-CREATE TABLE [dbo].[DimSalesTerritory](
+CREATE TABLE [$(inits)].[DimSalesTerritory](
 	[SalesTerritoryKey] [int] IDENTITY(1,1) NOT NULL,
 	[SalesTerritoryAlternateKey] [int] NULL,
 	[SalesTerritoryRegion] [nvarchar](50) NOT NULL,
@@ -172,7 +178,7 @@ WITH
   ); 
 GO
 
-CREATE TABLE [dbo].[DimPromotion](
+CREATE TABLE [$(inits)].[DimPromotion](
 	[PromotionKey] [int] IDENTITY(1,1) NOT NULL,
 	[PromotionAlternateKey] [int] NULL,
 	[EnglishPromotionName] [nvarchar](255) NULL,
@@ -191,7 +197,7 @@ CREATE TABLE [dbo].[DimPromotion](
 	[MaxQty] [int] NULL)
 GO
 
-CREATE TABLE [dbo].[DimCurrency](
+CREATE TABLE [$(inits)].[DimCurrency](
 	[CurrencyKey] [int] IDENTITY(1,1) NOT NULL,
 	[CurrencyAlternateKey] [nchar](3) NOT NULL,
 	[CurrencyName] [nvarchar](50) NOT NULL,

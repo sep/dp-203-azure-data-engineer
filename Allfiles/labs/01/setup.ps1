@@ -1,10 +1,17 @@
 Clear-Host
 write-host "Starting script at $(Get-Date)"
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-Install-Module -Name Az.Synapse -Force
+#Install-Module -Name Az.Accounts -RequiredVersion 2.18.0-preview -AllowPrerelease
+#Install-Module -Name Az.Synapse -Force
+#Install-Module -Name SqlServer -Force
+
+$selectedSub = $args[0]
+$inits = $args[1]
+$user = $args[2]
 
 # Handle cases where the user has multiple subscriptions
-$subs = Get-AzSubscription | Select-Object
+
+<#$subs = Get-AzSubscription | Select-Object
 if($subs.GetType().IsArray -and $subs.length -gt 1){
     Write-Host "You have multiple Azure subscriptions - please select the one you want to use:"
     for($i = 0; $i -lt $subs.length; $i++)
@@ -34,16 +41,16 @@ if($subs.GetType().IsArray -and $subs.length -gt 1){
             }
     }
     $selectedSub = $subs[$selectedIndex].Id
-    Select-AzSubscription -SubscriptionId $selectedSub
-    az account set --subscription $selectedSub
-}
+    #>
+    #Select-AzSubscription -SubscriptionId $selectedSub
+    #az account set --subscription $selectedSub
+#}
 
+<#
 # Prompt user for a password for the SQL Database
 $sqlUser = "SQLUser"
-write-host ""
-$sqlPassword = ""
-$complexPassword = 0
-
+write-host "" #>
+<#
 while ($complexPassword -ne 1)
 {
     $SqlPassword = Read-Host "Enter a password to use for the $sqlUser login.
@@ -79,8 +86,11 @@ foreach ($provider in $provider_list){
 [string]$suffix =  -join ((48..57) + (97..122) | Get-Random -Count 7 | % {[char]$_})
 Write-Host "Your randomly-generated suffix for Azure resources is $suffix"
 $resourceGroupName = "dp203-$suffix"
+#>
 
-# Choose a random region
+$suffix = "sep" + $inits
+
+<# Choose a random region
 Write-Host "Finding an available region. This may take several minutes...";
 $delay = 0, 30, 60, 90, 120 | Get-Random
 Start-Sleep -Seconds $delay # random delay to stagger requests from multi-student classes
@@ -128,14 +138,19 @@ $Region = $locations.Get($rand).Location
 }
 Write-Host "Creating $resourceGroupName resource group in $Region ..."
 New-AzResourceGroup -Name $resourceGroupName -Location $Region | Out-Null
+#>
 
 # Create Synapse workspace
-$synapseWorkspace = "synapse$suffix"
-$dataLakeAccountName = "datalake$suffix"
-$sparkPool = "spark$suffix"
-$sqlDatabaseName = "sql$suffix"
+$sqlUser = $env:sqlUser
+$sqlPassword = $env:sqlPassword
+
+$synapseWorkspace = $env:synapseWorkspace
+$dataLakeAccountName = $env:dataLakeAccountName
+$sparkPool = $env:sparkPool
+$sqlDatabaseName = $env:sqlDatabaseName
 
 
+<#
 write-host "Creating $synapseWorkspace Synapse Analytics workspace in $resourceGroupName resource group..."
 write-host "(This may take some time!)"
 New-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName `
@@ -148,13 +163,13 @@ New-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName `
   -sqlUser $sqlUser `
   -sqlPassword $sqlPassword `
   -uniqueSuffix $suffix `
-  -Force
+  -Force#>
 
 # Pause Data Explorer pool
 #write-host "Pausing the $adxpool Data Explorer Pool..."
 #Stop-AzSynapseKustoPool -Name $adxpool -ResourceGroupName $resourceGroupName -WorkspaceName $synapseWorkspace -NoWait
 
-# Make the current user and the Synapse service principal owners of the data lake blob store
+<# Make the current user and the Synapse service principal owners of the data lake blob store
 write-host "Granting permissions on the $dataLakeAccountName storage account..."
 write-host "(you can ignore any warnings!)"
 $subscriptionId = (Get-AzContext).Subscription.Id
@@ -162,25 +177,48 @@ $userName = ((az ad signed-in-user show) | ConvertFrom-JSON).UserPrincipalName
 $id = (Get-AzADServicePrincipal -DisplayName $synapseWorkspace).id
 New-AzRoleAssignment -Objectid $id -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
 New-AzRoleAssignment -SignInName $userName -RoleDefinitionName "Storage Blob Data Owner" -Scope "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Storage/storageAccounts/$dataLakeAccountName" -ErrorAction SilentlyContinue;
-
+#>
 
 # Create database
-write-host "Creating the $sqlDatabaseName database..."
-sqlcmd -S "$synapseWorkspace.sql.azuresynapse.net" -U $sqlUser -P $sqlPassword -d $sqlDatabaseName -I -i setup.sql
+write-host "Creating the $schema..."
 
-# Load data
+$params = @{
+    "inits" = $inits
+    "user" = $user
+}
+
+$token = (Get-AzAccessToken -ResourceUrl https://database.windows.net).Token 
+ 
+"Pool = " + "$sparkPool.database.windows.net"
+
+$sqlname = "$env:synapseWorkspace.sql.azuresynapse.net"
+
+Invoke-Sqlcmd -ConnectionString $conn -InputFile "setup.sql" -AccessToken "$token" -Variable $params
+
+<#Load data#>
 write-host "Loading data..."
 Get-ChildItem "./data/*.txt" -File | Foreach-Object {
     write-host ""
     $file = $_.FullName
     Write-Host "$file"
     $table = $_.Name.Replace(".txt","")
-    bcp dbo.$table in $file -S "$synapseWorkspace.sql.azuresynapse.net" -U $sqlUser -P $sqlPassword -d $sqlDatabaseName -f $file.Replace("txt", "fmt") -q -k -E -b 5000
+    Write-Host "Writing to $inits.$table to $synapseWorkspace.sql.azuresynapse.net"
+    bcp "$sqlDatabaseName.$inits.$table" in $file -S "$synapseWorkspace.sql.azuresynapse.net" -U $sqlUser -P $sqlPassword -f $file.Replace("txt", "fmt") -k -E -b 5000
 }
-
+<#
 # Pause SQL Pool
 write-host "Pausing the $sqlDatabaseName SQL Pool..."
 Suspend-AzSynapseSqlPool -WorkspaceName $synapseWorkspace -Name $sqlDatabaseName -AsJob
+
+#>
+
+$usr = Get-AzADUser -UserPrincipalName $user
+$usrobj = $usr.Id
+$ctx = New-AzStorageContext -StorageAccountName "$dataLakeAccountName" -UseConnectedAccount
+$dir = New-AzDataLakeGen2Item -Context $ctx -FileSystem "$files" -Path "files/$inits" -Directory
+$acl = Set-AzDataLakeGen2ItemAclObject -EntityId $usrobj -AccessControlType user -Permission "rw-" -DefaultScope
+Update-AzDataLakeGen2Item -Context $ctx -FileSystem "$files" -Path "files/$inits" -acl $acl
+
 
 # Upload files
 write-host "Loading data..."
@@ -190,12 +228,12 @@ Get-ChildItem "./files/*.csv" -File | Foreach-Object {
     write-host ""
     $file = $_.Name
     Write-Host $file
-    $blobPath = "sales_data/$file"
-    Set-AzStorageBlobContent -File $_.FullName -Container "files" -Blob $blobPath -Context $storageContext
+    $blobPath = "/files/$inits/sales_data/$file"
+    Set-AzStorageBlobContent -File $_.FullName -Container "$env:files" -Blob $blobPath -Context $storageContext
 }
 
 # Create KQL script
 # Removing until fix for Bad Request error is resolved
 # New-AzSynapseKqlScript -WorkspaceName $synapseWorkspace -DefinitionFile "./files/ingest-data.kql"
 
-write-host "Script completed at $(Get-Date)"
+write-host "Script completed at $(Get-Date)"#>
